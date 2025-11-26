@@ -89,7 +89,7 @@ export function aggregateByCityHour(
 ) {
   const hourMetrics = metrics.filter(m => {
     if (m.hour !== hour) return false;
-    if (sourceFilter && sourceFilter.length > 0 && !sourceFilter.includes(m.source)) return false;
+    if (sourceFilter && !sourceFilter.includes(m.source)) return false;
     return true;
   });
 
@@ -141,7 +141,7 @@ export function getHourlyTotals(
   for (let hour = 0; hour < 24; hour++) {
     const hourMetrics = metrics.filter(m => {
       if (m.hour !== hour) return false;
-      if (sourceFilter && sourceFilter.length > 0 && !sourceFilter.includes(m.source)) return false;
+      if (sourceFilter && !sourceFilter.includes(m.source)) return false;
       return true;
     });
     
