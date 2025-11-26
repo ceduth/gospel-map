@@ -27,11 +27,11 @@ export default function GospelMap() {
 
   useEffect(() => {
     if (!isPlaying) return;
-    
+
     const interval = setInterval(() => {
       setCurrentHour(h => (h + 1) % 24);
     }, 1000);
-    
+
     return () => clearInterval(interval);
   }, [isPlaying]);
 
@@ -145,7 +145,7 @@ export default function GospelMap() {
             {(() => {
               const data = cityData.find(d => d.city.id === popupInfo.cityId);
               if (!data) return null;
-              
+
               return (
                 <div className="text-sm">
                   <div className="font-semibold text-white mb-2">
@@ -213,6 +213,9 @@ export default function GospelMap() {
         isPlaying={isPlaying}
         onHourChange={setCurrentHour}
         onPlayPause={() => setIsPlaying(!isPlaying)}
+        activeSources={activeSources}
+        showViews={showViews}
+        showExposures={showExposures}
       />
     </div>
   );

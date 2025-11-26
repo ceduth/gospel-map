@@ -131,3 +131,26 @@ export function aggregateByCityHour(
       bySource: cityMap.get(city.id)!.bySource,
     }));
 }
+
+export function getHourlyTotals(
+  metrics: HourlyMetric[] = dummyMetrics,
+  sourceFilter?: DataSource[]
+) {
+  const totals: { hour: number; views: number; exposures: number }[] = [];
+  
+  for (let hour = 0; hour < 24; hour++) {
+    const hourMetrics = metrics.filter(m => {
+      if (m.hour !== hour) return false;
+      if (sourceFilter && sourceFilter.length > 0 && !sourceFilter.includes(m.source)) return false;
+      return true;
+    });
+    
+    totals.push({
+      hour,
+      views: hourMetrics.reduce((sum, m) => sum + m.views, 0),
+      exposures: hourMetrics.reduce((sum, m) => sum + m.exposures, 0),
+    });
+  }
+  
+  return totals;
+}
