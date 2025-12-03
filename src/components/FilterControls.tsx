@@ -8,15 +8,14 @@ interface FilterControlsProps {
   activeSources: DataSource[];
   onSourceToggle: (source: DataSource) => void;
   showViews: boolean;
-  showExposures: boolean;
+  showJourneyViews: boolean;
   onToggleViews: () => void;
-  onToggleExposures: () => void;
+  onToggleJourneyViews: () => void;
 }
 
 const sourceLabels: Record<DataSource, string> = {
   app: 'App',
   web: 'Web',
-  me2: 'ME2',
   youtube: 'YouTube',
   nextsteps: 'NextSteps',
 };
@@ -33,7 +32,6 @@ const NextStepsIcon = () => (
 const sourceIcons: Record<DataSource, React.ReactNode> = {
   app: <Smartphone size={16} />,
   web: <Globe size={16} />,
-  me2: null,
   youtube: null,
   nextsteps: <NextStepsIcon />,
 };
@@ -42,12 +40,12 @@ export default function FilterControls({
   activeSources,
   onSourceToggle,
   showViews,
-  showExposures,
+  showJourneyViews,
   onToggleViews,
-  onToggleExposures,
+  onToggleJourneyViews,
 }: FilterControlsProps) {
 
-  const sources: DataSource[] = ['app', 'web', 'nextsteps'];
+  const sources: DataSource[] = ['app', 'web', 'youtube', 'nextsteps'];
 
   return (
     <div className="absolute top-4 right-16 bg-gray-900/90 backdrop-blur rounded-lg px-4 py-3">
@@ -68,10 +66,10 @@ export default function FilterControls({
             <span>Media Views</span>
           </button>
           <button
-            onClick={onToggleExposures}
+            onClick={onToggleJourneyViews}
             className={`
               px-4 py-2.5 rounded-full text-sm font-semibold transition-all flex items-center gap-2.5 shadow-lg
-              ${showExposures
+              ${showJourneyViews
                 ? 'bg-emerald-600 text-white shadow-emerald-500/50'
                 : 'bg-gray-800 text-gray-400 hover:bg-gray-700 shadow-none'
               }

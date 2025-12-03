@@ -12,7 +12,7 @@ interface TimelineProps {
   onPlayPause: () => void;
   activeSources: DataSource[];
   showViews: boolean;
-  showExposures: boolean;
+  showJourneyViews: boolean;
   metrics: RawMetric[];
 }
 
@@ -23,7 +23,7 @@ export default function Timeline({
   onPlayPause,
   activeSources,
   showViews,
-  showExposures,
+  showJourneyViews,
   metrics,
 }: TimelineProps) {
   const [collapsed, setCollapsed] = useState(true);
@@ -34,8 +34,8 @@ export default function Timeline({
   }, [metrics, activeSources]);
 
   const maxViews = Math.max(...hourlyTotals.map(h => h.views), 1);
-  const maxExposures = Math.max(...hourlyTotals.map(h => h.exposures), 1);
-  const maxValue = Math.max(maxViews, maxExposures);
+  const maxJourneyViews = Math.max(...hourlyTotals.map(h => h.journeyViews), 1);
+  const maxValue = Math.max(maxViews, maxJourneyViews);
 
   const chartHeight = 60;
 
@@ -48,10 +48,10 @@ export default function Timeline({
     return `M${points.join(' L')} L100,${chartHeight} L0,${chartHeight} Z`;
   }, [hourlyTotals, maxValue]);
 
-  const exposuresPath = useMemo(() => {
+  const journeyViewsPath = useMemo(() => {
     const points = hourlyTotals.map((h, i) => {
       const x = (i / 23) * 100;
-      const y = chartHeight - (h.exposures / maxValue) * chartHeight;
+      const y = chartHeight - (h.journeyViews / maxValue) * chartHeight;
       return `${x},${y}`;
     });
     return `M${points.join(' L')} L100,${chartHeight} L0,${chartHeight} Z`;
@@ -101,9 +101,9 @@ export default function Timeline({
                   Media Views: {hourlyTotals[currentHour]?.views.toLocaleString()}
                 </span>
               )}
-              {showExposures && (
+              {showJourneyViews && (
                 <span className="text-emerald-400">
-                  Journey Views: {hourlyTotals[currentHour]?.exposures.toLocaleString()}
+                  Journey Views: {hourlyTotals[currentHour]?.journeyViews.toLocaleString()}
                 </span>
               )}
             </div>
@@ -125,9 +125,9 @@ export default function Timeline({
                   strokeWidth="0.5"
                 />
               )}
-              {showExposures && (
+              {showJourneyViews && (
                 <path
-                  d={exposuresPath}
+                  d={journeyViewsPath}
                   fill="rgba(16, 185, 129, 0.4)"
                   stroke="rgba(16, 185, 129, 0.8)"
                   strokeWidth="0.5"

@@ -1,4 +1,4 @@
-export type DataSource = 'app' | 'web' | 'me2' | 'youtube' | 'nextsteps';
+export type DataSource = 'app' | 'web' | 'youtube' | 'nextsteps';
 
 export interface RawMetric {
   date: string;
@@ -8,7 +8,7 @@ export interface RawMetric {
   lng: number;
   country: string;
   views: number;
-  exposures: number;
+  journeyViews: number;
 }
 
 export interface LocationData {
@@ -22,6 +22,6 @@ export interface AggregatedLocation {
   location: LocationData;
   hour: number;
   views: number;
-  exposures: number;
-  bySource: Record<DataSource, { views: number; exposures: number }>;
+  journeyViews: number;
+  bySource: Record<DataSource, { views: number; journeyViews: number }>;
 }
