@@ -26,7 +26,7 @@ export default function Timeline({
   showExposures,
   metrics,
 }: TimelineProps) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const hours = Array.from({ length: 24 }, (_, i) => i);
 
   const hourlyTotals = useMemo(() => {
