@@ -156,11 +156,11 @@ export default function GospelMap() {
                   </div>
                   <div className="space-y-1">
                     <div className="flex justify-between gap-4">
-                      <span className="text-blue-400">Views:</span>
+                      <span className="text-blue-400">Media Views:</span>
                       <span>{data.views.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between gap-4">
-                      <span className="text-emerald-400">Exposures:</span>
+                      <span className="text-emerald-400">Journey Views:</span>
                       <span>{data.exposures.toLocaleString()}</span>
                     </div>
                   </div>
@@ -203,11 +203,11 @@ export default function GospelMap() {
         <div className="text-xs text-gray-400 mb-2">Legend</div>
         <div className="flex items-center gap-2 text-sm">
           <div className="w-3 h-3 rounded-full bg-blue-500" />
-          <span className="text-gray-300">Views</span>
+          <span className="text-gray-300">Media Views</span>
         </div>
         <div className="flex items-center gap-2 text-sm mt-1">
           <div className="w-3 h-3 rounded-full bg-emerald-500" />
-          <span className="text-gray-300">Exposures</span>
+          <span className="text-gray-300">Journey Views</span>
         </div>
       </div>
 

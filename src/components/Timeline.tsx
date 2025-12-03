@@ -98,12 +98,12 @@ export default function Timeline({
             <div className="ml-auto flex gap-4 text-sm">
               {showViews && (
                 <span className="text-blue-400">
-                  Views: {hourlyTotals[currentHour]?.views.toLocaleString()}
+                  Media Views: {hourlyTotals[currentHour]?.views.toLocaleString()}
                 </span>
               )}
               {showExposures && (
                 <span className="text-emerald-400">
-                  Exposures: {hourlyTotals[currentHour]?.exposures.toLocaleString()}
+                  Journey Views: {hourlyTotals[currentHour]?.exposures.toLocaleString()}
                 </span>
               )}
             </div>

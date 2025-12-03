@@ -70,7 +70,7 @@ export function aggregateByLocationHour(
 
     const data = locationMap.get(id)!;
     data.views += metric.views;
-    data.exposures += metric.exposures;
+    if (metric.source === 'nextsteps') { data.exposures += metric.exposures; }  // Journey Views only count NextSteps source
     data.bySource[metric.source].views += metric.views;
     data.bySource[metric.source].exposures += metric.exposures;
   }

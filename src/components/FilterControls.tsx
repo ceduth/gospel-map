@@ -46,7 +46,7 @@ export default function FilterControls({
               }
             `}
           >
-            Views
+            Media Views
           </button>
           <button
             onClick={onToggleExposures}
@@ -58,7 +58,7 @@ export default function FilterControls({
               }
             `}
           >
-            Exposures
+            Journey Views
           </button>
         </div>
       </div>
