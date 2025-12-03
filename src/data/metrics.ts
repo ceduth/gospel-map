@@ -3,11 +3,11 @@ import { DataSource, RawMetric, AggregatedLocation, LocationData } from '@/types
 export const dataSources: DataSource[] = ['app', 'web', 'me2', 'youtube', 'nextsteps'];
 
 export const sourceColors: Record<DataSource, string> = {
-  app: '#3b82f6',
-  web: '#10b981',
-  me2: '#f59e0b',
-  youtube: '#ef4444',
-  nextsteps: '#8b5cf6',
+  app: '#8b5cf6',      // purple (was blue)
+  web: '#f59e0b',      // amber (was emerald)
+  me2: '#f59e0b',      // amber (keep for data compatibility)
+  youtube: '#ef4444',  // red (keep for data compatibility)
+  nextsteps: '#ec4899', // pink (was purple)
 };
 
 export async function loadMetrics(): Promise<RawMetric[]> {

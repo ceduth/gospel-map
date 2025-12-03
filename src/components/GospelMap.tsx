@@ -248,7 +248,7 @@ export default function GospelMap() {
       </MapGL>
 
       <div className="absolute top-4 left-4 bg-gray-900/90 backdrop-blur rounded-lg px-4 py-3">
-        <h1 className="text-lg font-semibold text-white">Gospel Map</h1>
+        <h1 className="text-lg font-semibold text-white">Jesus Film Project User Map</h1>
         <p className="text-sm text-gray-400">
           Hour: {currentHour.toString().padStart(2, '0')}:00
         </p>
