@@ -16,7 +16,7 @@ export default function GospelMap() {
   const [metrics, setMetrics] = useState<RawMetric[]>([]);
   const [currentHour, setCurrentHour] = useState(12);
   const [cumulativeData, setCumulativeData] = useState<Map<string, AggregatedLocation>>(new Map());
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(true);
   const [activeSources, setActiveSources] = useState<DataSource[]>([...dataSources]);
   const [showViews, setShowViews] = useState(true);
   const [showExposures, setShowExposures] = useState(true);
@@ -80,7 +80,7 @@ export default function GospelMap() {
 
     const interval = setInterval(() => {
       setCurrentHour(h => (h + 1) % 24);
-    }, 1000);
+    }, 300);
 
     return () => clearInterval(interval);
   }, [isPlaying]);
@@ -118,8 +118,8 @@ export default function GospelMap() {
   }, []);
 
   const getMarkerSize = (value: number, maxValue: number) => {
-    const minSize = 8;
-    const maxSize = 40;
+    const minSize = 6;
+    const maxSize = 50;
     const normalized = value / maxValue;
     return minSize + normalized * (maxSize - minSize);
   };
@@ -146,14 +146,17 @@ export default function GospelMap() {
             anchor="center"
           >
             <div
-              className="rounded-full cursor-pointer transition-all duration-300 ease-out"
+              className="rounded-full cursor-pointer transition-all duration-500 ease-out"
               style={{
                 width: getMarkerSize(data.views, maxViews),
                 height: getMarkerSize(data.views, maxViews),
                 backgroundColor: 'rgba(59, 130, 246, 0.6)',
                 border: '2px solid rgba(59, 130, 246, 0.9)',
-                boxShadow: '0 0 10px rgba(59, 130, 246, 0.5)',
+                boxShadow: hoveredLocation === data.location.id
+                  ? '0 0 20px rgba(59, 130, 246, 0.8)'
+                  : '0 0 15px rgba(59, 130, 246, 0.6)',
                 transform: hoveredLocation === data.location.id ? 'scale(1.2)' : 'scale(1)',
+                animation: data.views > 0 ? 'pulse 2s ease-in-out infinite' : 'none',
               }}
               onMouseEnter={() => setHoveredLocation(data.location.id)}
               onMouseLeave={() => setHoveredLocation(null)}
@@ -174,14 +177,17 @@ export default function GospelMap() {
             anchor="center"
           >
             <div
-              className="rounded-full cursor-pointer transition-all duration-300 ease-out"
+              className="rounded-full cursor-pointer transition-all duration-500 ease-out"
               style={{
                 width: getMarkerSize(data.exposures, maxExposures),
                 height: getMarkerSize(data.exposures, maxExposures),
                 backgroundColor: 'rgba(16, 185, 129, 0.6)',
                 border: '2px solid rgba(16, 185, 129, 0.9)',
-                boxShadow: '0 0 10px rgba(16, 185, 129, 0.5)',
+                boxShadow: hoveredLocation === data.location.id
+                  ? '0 0 20px rgba(16, 185, 129, 0.8)'
+                  : '0 0 15px rgba(16, 185, 129, 0.6)',
                 transform: hoveredLocation === data.location.id ? 'scale(1.2)' : 'scale(1)',
+                animation: data.exposures > 0 ? 'pulse 2s ease-in-out infinite' : 'none',
               }}
               onMouseEnter={() => setHoveredLocation(data.location.id)}
               onMouseLeave={() => setHoveredLocation(null)}
