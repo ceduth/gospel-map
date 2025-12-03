@@ -1,18 +1,21 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import Map, { Marker, Popup, NavigationControl } from 'react-map-gl/maplibre';
+import { Map as MapGL, Marker, Popup, NavigationControl } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { DataSource, RawMetric } from '@/types';
+import { DataSource, RawMetric, AggregatedLocation } from '@/types';
 import { loadMetrics, aggregateByLocationHour, dataSources, sourceColors } from '@/data/metrics';
 import Timeline from './Timeline';
 import FilterControls from './FilterControls';
 
 const CARTO_DARK = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
 
+
 export default function GospelMap() {
+
   const [metrics, setMetrics] = useState<RawMetric[]>([]);
   const [currentHour, setCurrentHour] = useState(12);
+  const [cumulativeData, setCumulativeData] = useState<Map<string, AggregatedLocation>>(new Map());
   const [isPlaying, setIsPlaying] = useState(false);
   const [activeSources, setActiveSources] = useState<DataSource[]>([...dataSources]);
   const [showViews, setShowViews] = useState(true);
@@ -28,6 +31,50 @@ export default function GospelMap() {
     loadMetrics().then(setMetrics);
   }, []);
 
+  // Handle cumulative data accumulation and reset
+  useEffect(() => {
+    if (metrics.length === 0) return;
+
+    // Accumulate data from hour 0 to currentHour
+    const newCumulative = new Map<string, AggregatedLocation>();
+
+    for (let h = 0; h <= currentHour; h++) {
+      const hourData = aggregateByLocationHour(h, metrics, activeSources, showViews, showExposures);
+
+      for (const data of hourData) {
+        const id = data.location.id;
+
+        if (!newCumulative.has(id)) {
+          newCumulative.set(id, {
+            location: data.location,
+            hour: currentHour,
+            views: 0,
+            exposures: 0,
+            bySource: {
+              app: { views: 0, exposures: 0 },
+              web: { views: 0, exposures: 0 },
+              me2: { views: 0, exposures: 0 },
+              youtube: { views: 0, exposures: 0 },
+              nextsteps: { views: 0, exposures: 0 },
+            },
+          });
+        }
+
+        const existing = newCumulative.get(id)!;
+        existing.views += data.views;
+        existing.exposures += data.exposures;
+
+        // Accumulate by source
+        for (const source of dataSources) {
+          existing.bySource[source].views += data.bySource[source].views;
+          existing.bySource[source].exposures += data.bySource[source].exposures;
+        }
+      }
+    }
+
+    setCumulativeData(newCumulative);
+  }, [currentHour, metrics, activeSources, showViews, showExposures]);
+
   useEffect(() => {
     if (!isPlaying) return;
 
@@ -38,17 +85,28 @@ export default function GospelMap() {
     return () => clearInterval(interval);
   }, [isPlaying]);
 
-  const locationData = useMemo(() => {
-    return aggregateByLocationHour(currentHour, metrics, activeSources, showViews, showExposures);
-  }, [currentHour, metrics, activeSources, showViews, showExposures]);
+  const locationData = Array.from(cumulativeData.values());
 
   const maxViews = useMemo(() => {
-    return Math.max(...locationData.map(d => d.views), 1);
-  }, [locationData]);
+    // Calculate max across ALL hours (0-23), not just cumulative
+    const allHourTotals: number[] = [];
+    for (let h = 0; h < 24; h++) {
+      const hourData = aggregateByLocationHour(h, metrics, activeSources, true, false);
+      const hourTotal = hourData.reduce((sum, d) => sum + d.views, 0);
+      allHourTotals.push(hourTotal);
+    }
+    return Math.max(...allHourTotals, 1);
+  }, [metrics, activeSources]);
 
   const maxExposures = useMemo(() => {
-    return Math.max(...locationData.map(d => d.exposures), 1);
-  }, [locationData]);
+    const allHourTotals: number[] = [];
+    for (let h = 0; h < 24; h++) {
+      const hourData = aggregateByLocationHour(h, metrics, activeSources, false, true);
+      const hourTotal = hourData.reduce((sum, d) => sum + d.exposures, 0);
+      allHourTotals.push(hourTotal);
+    }
+    return Math.max(...allHourTotals, 1);
+  }, [metrics, activeSources]);
 
   const handleSourceToggle = useCallback((source: DataSource) => {
     setActiveSources(current => {
@@ -68,7 +126,7 @@ export default function GospelMap() {
 
   return (
     <div className="relative h-full w-full">
-      <Map
+      <MapGL
         initialViewState={{
           longitude: 0,
           latitude: 20,
@@ -181,7 +239,7 @@ export default function GospelMap() {
             })()}
           </Popup>
         )}
-      </Map>
+      </MapGL>
 
       <div className="absolute top-4 left-4 bg-gray-900/90 backdrop-blur rounded-lg px-4 py-3">
         <h1 className="text-lg font-semibold text-white">Gospel Map</h1>
