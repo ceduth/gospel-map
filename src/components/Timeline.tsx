@@ -2,8 +2,8 @@
 
 import { useState, useMemo } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import { DataSource } from '@/types';
-import { getHourlyTotals, dummyMetrics } from '@/data/dummy';
+import { DataSource, RawMetric } from '@/types';
+import { getHourlyTotals } from '@/data/metrics';
 
 interface TimelineProps {
   currentHour: number;
@@ -13,6 +13,7 @@ interface TimelineProps {
   activeSources: DataSource[];
   showViews: boolean;
   showExposures: boolean;
+  metrics: RawMetric[];
 }
 
 export default function Timeline({
@@ -23,13 +24,14 @@ export default function Timeline({
   activeSources,
   showViews,
   showExposures,
+  metrics,
 }: TimelineProps) {
   const [collapsed, setCollapsed] = useState(false);
   const hours = Array.from({ length: 24 }, (_, i) => i);
 
   const hourlyTotals = useMemo(() => {
-    return getHourlyTotals(dummyMetrics, activeSources);
-  }, [activeSources]);
+    return getHourlyTotals(metrics, activeSources);
+  }, [metrics, activeSources]);
 
   const maxViews = Math.max(...hourlyTotals.map(h => h.views), 1);
   const maxExposures = Math.max(...hourlyTotals.map(h => h.exposures), 1);

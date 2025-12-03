@@ -3,27 +3,30 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import Map, { Marker, Popup, NavigationControl } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { DataSource } from '@/types';
-import { aggregateByCityHour, dataSources, sourceColors, dummyMetrics } from '@/data/dummy';
+import { DataSource, RawMetric } from '@/types';
+import { loadMetrics, aggregateByLocationHour, dataSources, sourceColors } from '@/data/metrics';
 import Timeline from './Timeline';
 import FilterControls from './FilterControls';
 
 const CARTO_DARK = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
 
-
 export default function GospelMap() {
-
+  const [metrics, setMetrics] = useState<RawMetric[]>([]);
   const [currentHour, setCurrentHour] = useState(12);
   const [isPlaying, setIsPlaying] = useState(false);
   const [activeSources, setActiveSources] = useState<DataSource[]>([...dataSources]);
   const [showViews, setShowViews] = useState(true);
   const [showExposures, setShowExposures] = useState(true);
-  const [hoveredCity, setHoveredCity] = useState<string | null>(null);
+  const [hoveredLocation, setHoveredLocation] = useState<string | null>(null);
   const [popupInfo, setPopupInfo] = useState<{
-    cityId: string;
+    id: string;
     lat: number;
     lng: number;
   } | null>(null);
+
+  useEffect(() => {
+    loadMetrics().then(setMetrics);
+  }, []);
 
   useEffect(() => {
     if (!isPlaying) return;
@@ -35,17 +38,17 @@ export default function GospelMap() {
     return () => clearInterval(interval);
   }, [isPlaying]);
 
-  const cityData = useMemo(() => {
-    return aggregateByCityHour(currentHour, dummyMetrics, activeSources, showViews, showExposures);
-  }, [currentHour, activeSources, showViews, showExposures]);
+  const locationData = useMemo(() => {
+    return aggregateByLocationHour(currentHour, metrics, activeSources, showViews, showExposures);
+  }, [currentHour, metrics, activeSources, showViews, showExposures]);
 
   const maxViews = useMemo(() => {
-    return Math.max(...cityData.map(d => d.views), 1);
-  }, [cityData]);
+    return Math.max(...locationData.map(d => d.views), 1);
+  }, [locationData]);
 
   const maxExposures = useMemo(() => {
-    return Math.max(...cityData.map(d => d.exposures), 1);
-  }, [cityData]);
+    return Math.max(...locationData.map(d => d.exposures), 1);
+  }, [locationData]);
 
   const handleSourceToggle = useCallback((source: DataSource) => {
     setActiveSources(current => {
@@ -77,11 +80,11 @@ export default function GospelMap() {
       >
         <NavigationControl position="top-right" />
 
-        {showViews && cityData.map(data => (
+        {showViews && locationData.map(data => (
           <Marker
-            key={`view-${data.city.id}`}
-            longitude={data.city.lng}
-            latitude={data.city.lat}
+            key={`view-${data.location.id}`}
+            longitude={data.location.lng}
+            latitude={data.location.lat}
             anchor="center"
           >
             <div
@@ -92,24 +95,24 @@ export default function GospelMap() {
                 backgroundColor: 'rgba(59, 130, 246, 0.6)',
                 border: '2px solid rgba(59, 130, 246, 0.9)',
                 boxShadow: '0 0 10px rgba(59, 130, 246, 0.5)',
-                transform: hoveredCity === data.city.id ? 'scale(1.2)' : 'scale(1)',
+                transform: hoveredLocation === data.location.id ? 'scale(1.2)' : 'scale(1)',
               }}
-              onMouseEnter={() => setHoveredCity(data.city.id)}
-              onMouseLeave={() => setHoveredCity(null)}
+              onMouseEnter={() => setHoveredLocation(data.location.id)}
+              onMouseLeave={() => setHoveredLocation(null)}
               onClick={() => setPopupInfo({
-                cityId: data.city.id,
-                lat: data.city.lat,
-                lng: data.city.lng,
+                id: data.location.id,
+                lat: data.location.lat,
+                lng: data.location.lng,
               })}
             />
           </Marker>
         ))}
 
-        {showExposures && cityData.map(data => (
+        {showExposures && locationData.map(data => (
           <Marker
-            key={`exposure-${data.city.id}`}
-            longitude={data.city.lng + 0.5}
-            latitude={data.city.lat + 0.3}
+            key={`exposure-${data.location.id}`}
+            longitude={data.location.lng + 0.5}
+            latitude={data.location.lat + 0.3}
             anchor="center"
           >
             <div
@@ -120,14 +123,14 @@ export default function GospelMap() {
                 backgroundColor: 'rgba(16, 185, 129, 0.6)',
                 border: '2px solid rgba(16, 185, 129, 0.9)',
                 boxShadow: '0 0 10px rgba(16, 185, 129, 0.5)',
-                transform: hoveredCity === data.city.id ? 'scale(1.2)' : 'scale(1)',
+                transform: hoveredLocation === data.location.id ? 'scale(1.2)' : 'scale(1)',
               }}
-              onMouseEnter={() => setHoveredCity(data.city.id)}
-              onMouseLeave={() => setHoveredCity(null)}
+              onMouseEnter={() => setHoveredLocation(data.location.id)}
+              onMouseLeave={() => setHoveredLocation(null)}
               onClick={() => setPopupInfo({
-                cityId: data.city.id,
-                lat: data.city.lat,
-                lng: data.city.lng,
+                id: data.location.id,
+                lat: data.location.lat,
+                lng: data.location.lng,
               })}
             />
           </Marker>
@@ -143,13 +146,13 @@ export default function GospelMap() {
             closeOnClick={false}
           >
             {(() => {
-              const data = cityData.find(d => d.city.id === popupInfo.cityId);
+              const data = locationData.find(d => d.location.id === popupInfo.id);
               if (!data) return null;
 
               return (
                 <div className="text-sm">
                   <div className="font-semibold text-white mb-2">
-                    {data.city.name}, {data.city.country}
+                    {data.location.country}
                   </div>
                   <div className="space-y-1">
                     <div className="flex justify-between gap-4">
@@ -216,6 +219,7 @@ export default function GospelMap() {
         activeSources={activeSources}
         showViews={showViews}
         showExposures={showExposures}
+        metrics={metrics}
       />
     </div>
   );

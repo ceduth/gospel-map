@@ -1,28 +1,25 @@
-export type DataSource = 'app' | 'web' | 'ga4' | 'youtube' | 'nextsteps';
+export type DataSource = 'app' | 'web' | 'me2' | 'youtube' | 'nextsteps';
 
-export interface CityData {
-  id: string;
-  name: string;
-  country: string;
+export interface RawMetric {
+  date: string;
+  hour: number;
+  source: DataSource;
   lat: number;
   lng: number;
-}
-
-export interface HourlyMetric {
-  hour: number; // 0-23
+  country: string;
   views: number;
   exposures: number;
-  source: DataSource;
-  cityId: string;
 }
 
-export interface CityHourlyData {
-  city: CityData;
-  metrics: HourlyMetric[];
+export interface LocationData {
+  id: string;
+  lat: number;
+  lng: number;
+  country: string;
 }
 
-export interface AggregatedCityHour {
-  city: CityData;
+export interface AggregatedLocation {
+  location: LocationData;
   hour: number;
   views: number;
   exposures: number;

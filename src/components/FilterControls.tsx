@@ -1,7 +1,7 @@
 'use client';
 
 import { DataSource } from '@/types';
-import { sourceColors } from '@/data/dummy';
+import { sourceColors } from '@/data/metrics';
 
 interface FilterControlsProps {
   activeSources: DataSource[];
@@ -15,7 +15,7 @@ interface FilterControlsProps {
 const sourceLabels: Record<DataSource, string> = {
   app: 'App',
   web: 'Web',
-  ga4: 'GA4',
+  me2: 'ME2',
   youtube: 'YouTube',
   nextsteps: 'NextSteps',
 };
@@ -29,7 +29,7 @@ export default function FilterControls({
   onToggleExposures,
 }: FilterControlsProps) {
   
-  const sources: DataSource[] = ['app', 'web', 'ga4', 'youtube', 'nextsteps'];
+  const sources: DataSource[] = ['app', 'web', 'me2', 'youtube', 'nextsteps'];
 
   return (
     <div className="absolute top-4 right-16 bg-gray-900/90 backdrop-blur rounded-lg px-4 py-3">
