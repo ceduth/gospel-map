@@ -26,6 +26,7 @@ export default function GospelMap() {
     lat: number;
     lng: number;
   } | null>(null);
+  const [mapError, setMapError] = useState<string | null>(null);
 
   useEffect(() => {
     loadMetrics().then(setMetrics);
@@ -126,6 +127,20 @@ export default function GospelMap() {
 
   return (
     <div className="relative h-full w-full">
+      {mapError && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-gray-900">
+          <div className="text-center p-8 bg-gray-800 rounded-lg max-w-md">
+            <h2 className="text-xl font-bold text-red-400 mb-4">Map Error</h2>
+            <p className="text-gray-300 mb-4">{mapError}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-500"
+            >
+              Reload Page
+            </button>
+          </div>
+        </div>
+      )}
       <MapGL
         initialViewState={{
           longitude: 0,
@@ -135,6 +150,10 @@ export default function GospelMap() {
         style={{ width: '100%', height: '100%' }}
         mapStyle={CARTO_DARK}
         attributionControl={false}
+        onError={(e) => {
+          console.error('Map error:', e);
+          setMapError('Failed to initialize map. WebGL may be unavailable.');
+        }}
       >
         <NavigationControl position="top-right" />
 

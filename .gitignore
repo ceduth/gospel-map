@@ -13,3 +13,4 @@ npm-debug.log*
 .vscode/
 .DS_Store
 .vercel/
+service-account-key.json
