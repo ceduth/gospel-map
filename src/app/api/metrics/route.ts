@@ -8,7 +8,10 @@ const debug = (...args: any[]) => process.env.DEBUG_BIGQUERY && console.log('[BQ
 // Initialize BigQuery Storage Read API client
 const client = new BigQueryReadClient({
   projectId: process.env.BIGQUERY_PROJECT_ID || 'jfp-data-warehouse',
-  keyFilename: path.join(process.cwd(), process.env.GOOGLE_APPLICATION_CREDENTIALS || 'service-account-key.json'),
+  ...(process.env.GOOGLE_SERVICE_ACCOUNT_JSON
+    ? { credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON) }
+    : { keyFilename: path.join(process.cwd(), process.env.GOOGLE_SERVICE_ACCOUNT_PATH || 'service-account-key.json') }
+  ),
 });
 
 const DATASET = process.env.BIGQUERY_DATASET || 'dbt_tcarvalho';

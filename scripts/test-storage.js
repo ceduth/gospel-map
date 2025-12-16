@@ -1,7 +1,7 @@
 /**
  * export \
     BIGQUERY_DATASET=prod \
-    GOOGLE_APPLICATION_CREDENTIALS=jfp-data-warehouse-a6d5290a031a.json
+    GOOGLE_SERVICE_ACCOUNT_PATH=jfp-data-warehouse-a6d5290a031a.json
     node scripts/test-storage.js
  */
 
@@ -11,7 +11,7 @@ const path = require('path');
 async function testBigQueryStorage() {
   const client = new BigQueryReadClient({
     projectId: 'jfp-data-warehouse',
-    keyFilename: path.join(process.cwd(), process.env.GOOGLE_APPLICATION_CREDENTIALS || 'service-account-key.json'),
+    keyFilename: path.join(process.cwd(), process.env.GOOGLE_SERVICE_ACCOUNT_PATH || 'service-account-key.json'),
   });
 
   try {

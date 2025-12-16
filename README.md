@@ -17,17 +17,17 @@ npm install
 
 ### 2. Configure BigQuery Access
 
-1. Place `service-account-key.json` in project root
+1. Place `service-account-key.json` in project root (local dev)
 2. Grant service account these IAM roles in Google Cloud Console:
    - **BigQuery Data Viewer** (read table data)
    - **BigQuery Read Session User** (Storage Read API)
 
 ### 3. Environment Variables
 
-Create `.env.local`:
+**Local development** - create `.env.local`:
 ```env
 # Required
-GOOGLE_APPLICATION_CREDENTIALS=./service-account-key.json
+GOOGLE_SERVICE_ACCOUNT_PATH=./service-account-key.json
 BIGQUERY_PROJECT_ID=jfp-data-warehouse
 BIGQUERY_DATASET=prod
 
@@ -38,6 +38,13 @@ NEXT_PUBLIC_DEBUG_METRICS=true           # Client-side metrics logs
 # Optional - Data source behavior
 NEXT_PUBLIC_DEMO_MODE=true               # Use local CSV only, skip BigQuery
 NEXT_PUBLIC_DISABLE_CSV_FALLBACK=true    # Disable CSV fallback, show "No Data" UI
+```
+
+**Production (Vercel)** - add env vars in dashboard:
+```env
+GOOGLE_SERVICE_ACCOUNT_JSON=<paste entire JSON file content>
+BIGQUERY_PROJECT_ID=jfp-data-warehouse
+BIGQUERY_DATASET=prod
 ```
 
 ### 4. Run Development Server
