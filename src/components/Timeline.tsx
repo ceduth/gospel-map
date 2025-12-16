@@ -12,7 +12,6 @@ interface TimelineProps {
   onPlayPause: () => void;
   activeSources: DataSource[];
   showViews: boolean;
-  showJourneyViews: boolean;
   metrics: RawMetric[];
 }
 
@@ -23,7 +22,6 @@ export default function Timeline({
   onPlayPause,
   activeSources,
   showViews,
-  showJourneyViews,
   metrics,
 }: TimelineProps) {
   const [collapsed, setCollapsed] = useState(true);
@@ -34,28 +32,17 @@ export default function Timeline({
   }, [metrics, activeSources]);
 
   const maxViews = Math.max(...hourlyTotals.map(h => h.views), 1);
-  const maxJourneyViews = Math.max(...hourlyTotals.map(h => h.journeyViews), 1);
-  const maxValue = Math.max(maxViews, maxJourneyViews);
 
   const chartHeight = 60;
 
   const viewsPath = useMemo(() => {
     const points = hourlyTotals.map((h, i) => {
       const x = (i / 23) * 100;
-      const y = chartHeight - (h.views / maxValue) * chartHeight;
+      const y = chartHeight - (h.views / maxViews) * chartHeight;
       return `${x},${y}`;
     });
     return `M${points.join(' L')} L100,${chartHeight} L0,${chartHeight} Z`;
-  }, [hourlyTotals, maxValue]);
-
-  const journeyViewsPath = useMemo(() => {
-    const points = hourlyTotals.map((h, i) => {
-      const x = (i / 23) * 100;
-      const y = chartHeight - (h.journeyViews / maxValue) * chartHeight;
-      return `${x},${y}`;
-    });
-    return `M${points.join(' L')} L100,${chartHeight} L0,${chartHeight} Z`;
-  }, [hourlyTotals, maxValue]);
+  }, [hourlyTotals, maxViews]);
 
   const handleChartClick = (e: React.MouseEvent<SVGSVGElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -101,11 +88,6 @@ export default function Timeline({
                   Media Views: {hourlyTotals[currentHour]?.views.toLocaleString()}
                 </span>
               )}
-              {showJourneyViews && (
-                <span className="text-emerald-400">
-                  Journey Views: {hourlyTotals[currentHour]?.journeyViews.toLocaleString()}
-                </span>
-              )}
             </div>
           </div>
 
@@ -122,14 +104,6 @@ export default function Timeline({
                   d={viewsPath}
                   fill="rgba(59, 130, 246, 0.4)"
                   stroke="rgba(59, 130, 246, 0.8)"
-                  strokeWidth="0.5"
-                />
-              )}
-              {showJourneyViews && (
-                <path
-                  d={journeyViewsPath}
-                  fill="rgba(16, 185, 129, 0.4)"
-                  stroke="rgba(16, 185, 129, 0.8)"
                   strokeWidth="0.5"
                 />
               )}

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: ' Jesus Film Project User Map',
+  title: 'Jesus Film Project Plays Map',
   description: 'Real-time world map of gospel views and exposures',
 };
 
