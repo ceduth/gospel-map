@@ -3,7 +3,7 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: 'Jesus Film Project Plays Map',
-  description: 'Real-time world map of gospel views and exposures',
+  description: 'Daily playback of worldwide media views',
 };
 
 export default function RootLayout({
