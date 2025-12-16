@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Smartphone, Globe, Eye, ChevronDown, Search } from 'lucide-react';
+import { Smartphone, Globe, ChevronDown, Search, Play, Sparkles } from 'lucide-react';
 import { DataSource } from '@/types';
 import { sourceColors } from '@/data/metrics';
 
@@ -27,6 +27,18 @@ const sourceIcons: Record<DataSource, React.ReactNode> = {
   app: <Smartphone size={16} />,
   web: <Globe size={16} />,
 };
+
+interface MetricOption {
+  id: string;
+  label: string;
+  icon: React.ReactNode;
+  available: boolean;
+}
+
+const metricOptions: MetricOption[] = [
+  { id: 'views', label: 'Media Views', icon: <Play size={16} />, available: true },
+  { id: 'exposures', label: 'Exposures', icon: <Sparkles size={16} />, available: false },
+];
 
 function MultiSelect({
   label,
@@ -87,7 +99,7 @@ function MultiSelect({
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
-        setFocusedIndex(prev => 
+        setFocusedIndex(prev =>
           prev < sortedOptions.length - 1 ? prev + 1 : prev
         );
         break;
@@ -186,11 +198,10 @@ function MultiSelect({
                 <label
                   key={opt}
                   data-option
-                  className={`flex items-center gap-2 px-3 py-2 cursor-pointer ${
-                    index === focusedIndex
+                  className={`flex items-center gap-2 px-3 py-2 cursor-pointer ${index === focusedIndex
                       ? 'bg-gray-600'
                       : 'hover:bg-gray-700'
-                  }`}
+                    }`}
                 >
                   <input
                     type="checkbox"
@@ -203,6 +214,79 @@ function MultiSelect({
               ))
             )}
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MetricsSelect({
+  selected,
+  onChange,
+}: {
+  selected: string[];
+  onChange: (val: string[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const toggle = (id: string) => {
+    onChange(selected.includes(id) ? selected.filter(s => s !== id) : [...selected, id]);
+  };
+
+  const selectedLabels = metricOptions
+    .filter(m => selected.includes(m.id))
+    .map(m => m.label);
+
+  const displayText = selectedLabels.length === 0
+    ? 'None'
+    : selectedLabels.length === 1
+      ? selectedLabels[0]
+      : `${selectedLabels.length} metrics`;
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-sm text-left flex items-center justify-between hover:bg-gray-700 transition-colors"
+      >
+        <span className="text-gray-200 font-medium">{displayText}</span>
+        <ChevronDown size={16} className={`text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute right-0 z-50 mt-1 w-64 bg-gray-800 border border-gray-700 rounded-lg shadow-xl overflow-hidden">          {metricOptions.map(metric => (
+          <label
+            key={metric.id}
+            className={`flex items-center gap-3 px-3 py-2.5 ${metric.available
+                ? 'cursor-pointer hover:bg-gray-700'
+                : 'cursor-not-allowed opacity-50'
+              }`}
+          >
+            <input
+              type="checkbox"
+              checked={selected.includes(metric.id)}
+              onChange={() => metric.available && toggle(metric.id)}
+              disabled={!metric.available}
+              className="rounded border-gray-600 bg-gray-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-800 disabled:opacity-50"
+            />
+            <span className="text-sm text-gray-200 flex-1">{metric.label}</span>
+            {!metric.available && (
+              <span className="text-xs bg-gray-700 text-gray-400 px-2 py-0.5 rounded">
+                Coming soon
+              </span>
+            )}
+          </label>
+        ))}
         </div>
       )}
     </div>
@@ -224,25 +308,23 @@ export default function FilterControls({
 
   const sources: DataSource[] = ['app', 'web'];
 
+  // Convert showViews boolean to array format for MetricsSelect
+  const selectedMetrics = showViews ? ['views'] : [];
+  const handleMetricsChange = (metrics: string[]) => {
+    const shouldShowViews = metrics.includes('views');
+    if (shouldShowViews !== showViews) {
+      onToggleViews();
+    }
+  };
+
   return (
     <div className="absolute top-4 right-16 bg-gray-900/90 backdrop-blur rounded-lg px-4 py-3">
       <div className="mb-4 pb-4 border-b border-gray-700">
         <div className="text-xs text-gray-400 mb-3 font-semibold uppercase tracking-wide">Metrics</div>
-        <div className="flex gap-3">
-          <button
-            onClick={onToggleViews}
-            className={`
-              px-4 py-2.5 rounded-full text-sm font-semibold transition-all flex items-center gap-2.5 shadow-lg
-              ${showViews
-                ? 'bg-blue-600 text-white shadow-blue-500/50'
-                : 'bg-gray-800 text-gray-400 hover:bg-gray-700 shadow-none'
-              }
-            `}
-          >
-            <Eye size={20} />
-            <span>Media Views</span>
-          </button>
-        </div>
+        <MetricsSelect
+          selected={selectedMetrics}
+          onChange={handleMetricsChange}
+        />
       </div>
 
       <div className="mb-4 pb-4 border-b border-gray-700">
