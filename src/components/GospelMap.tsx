@@ -242,7 +242,12 @@ export default function GospelMap() {
       </MapGL>
 
       <div className="absolute top-4 left-4 bg-gray-900/90 backdrop-blur rounded-lg px-4 py-3">
-        <h1 className="text-lg font-semibold text-white">Jesus Film Project Plays Map</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-lg font-semibold text-white">Jesus Film Project Plays Map</h1>
+          {process.env.NEXT_PUBLIC_DEMO_MODE === 'true' && (
+            <span className="text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded">DEMO</span>
+          )}
+        </div>
         <p className="text-sm text-gray-400">
           Hour: {currentHour.toString().padStart(2, '0')}:00 UTC
         </p>
