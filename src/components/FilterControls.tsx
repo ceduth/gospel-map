@@ -36,7 +36,7 @@ interface MetricOption {
 }
 
 const metricOptions: MetricOption[] = [
-  { id: 'views', label: 'Media Views', icon: <Play size={16} />, available: true },
+  { id: 'views', label: 'Media Plays', icon: <Play size={16} />, available: true },
   { id: 'exposures', label: 'Exposures', icon: <Sparkles size={16} />, available: false },
 ];
 
@@ -279,6 +279,7 @@ function MetricsSelect({
               disabled={!metric.available}
               className="rounded border-gray-600 bg-gray-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-800 disabled:opacity-50"
             />
+            <span className="text-gray-300">{metric.icon}</span>
             <span className="text-sm text-gray-200 flex-1">{metric.label}</span>
             {!metric.available && (
               <span className="text-xs bg-gray-700 text-gray-400 px-2 py-0.5 rounded">
