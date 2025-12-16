@@ -41,14 +41,17 @@ function MultiSelect({
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [focusedIndex, setFocusedIndex] = useState(-1);
   const ref = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) {
         setOpen(false);
         setSearch('');
+        setFocusedIndex(-1);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -69,8 +72,66 @@ function MultiSelect({
     opt.toLowerCase().includes(search.toLowerCase())
   );
 
+  // Sort: selected items first, then alphabetical
+  const sortedOptions = [...filteredOptions].sort((a, b) => {
+    const aSelected = selected.includes(a);
+    const bSelected = selected.includes(b);
+    if (aSelected && !bSelected) return -1;
+    if (!aSelected && bSelected) return 1;
+    return a.localeCompare(b);
+  });
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!open) return;
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setFocusedIndex(prev => 
+          prev < sortedOptions.length - 1 ? prev + 1 : prev
+        );
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setFocusedIndex(prev => (prev > 0 ? prev - 1 : prev));
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (focusedIndex >= 0 && focusedIndex < sortedOptions.length) {
+          toggle(sortedOptions[focusedIndex]);
+        }
+        break;
+      case 'Escape':
+        e.preventDefault();
+        setOpen(false);
+        setSearch('');
+        setFocusedIndex(-1);
+        break;
+    }
+  };
+
+  // Scroll focused item into view
+  useEffect(() => {
+    if (focusedIndex >= 0 && listRef.current) {
+      const items = listRef.current.querySelectorAll('[data-option]');
+      items[focusedIndex]?.scrollIntoView({ block: 'nearest' });
+    }
+  }, [focusedIndex]);
+
+  // Reset focus when search changes
+  useEffect(() => {
+    setFocusedIndex(-1);
+  }, [search]);
+
+  const selectAllFiltered = () => {
+    const newSelected = [...new Set([...selected, ...filteredOptions])];
+    onChange(newSelected);
+  };
+
+  const unselectedFilteredCount = filteredOptions.filter(opt => !selected.includes(opt)).length;
+
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative" onKeyDown={handleKeyDown}>
       <button
         onClick={() => setOpen(!open)}
         className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-left flex items-center justify-between hover:bg-gray-700 transition-colors"
@@ -91,27 +152,45 @@ function MultiSelect({
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search..."
-                className="w-full pl-8 pr-3 py-1.5 bg-gray-700 border border-gray-600 rounded text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                className="w-full pl-8 pr-12 py-1.5 bg-gray-700 border border-gray-600 rounded text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-500"
               />
+              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-500">
+                {filteredOptions.length}/{options.length}
+              </span>
             </div>
           </div>
-          <button
-            onClick={() => {
-              onChange([]);
-              setSearch('');
-            }}
-            className="w-full px-3 py-2 text-left text-xs text-gray-400 hover:bg-gray-700 border-b border-gray-700"
-          >
-            Clear selection
-          </button>
-          <div className="max-h-48 overflow-auto">
-            {filteredOptions.length === 0 ? (
+          <div className="flex border-b border-gray-700">
+            <button
+              onClick={() => {
+                onChange([]);
+                setSearch('');
+              }}
+              className="flex-1 px-3 py-1.5 text-left text-xs text-gray-400 hover:bg-gray-700"
+            >
+              Clear
+            </button>
+            {search && unselectedFilteredCount > 0 && (
+              <button
+                onClick={selectAllFiltered}
+                className="flex-1 px-3 py-1.5 text-right text-xs text-blue-400 hover:bg-gray-700"
+              >
+                Select all {filteredOptions.length}
+              </button>
+            )}
+          </div>
+          <div ref={listRef} className="max-h-48 overflow-auto">
+            {sortedOptions.length === 0 ? (
               <div className="px-3 py-2 text-sm text-gray-500">No matches</div>
             ) : (
-              filteredOptions.map(opt => (
+              sortedOptions.map((opt, index) => (
                 <label
                   key={opt}
-                  className="flex items-center gap-2 px-3 py-2 hover:bg-gray-700 cursor-pointer"
+                  data-option
+                  className={`flex items-center gap-2 px-3 py-2 cursor-pointer ${
+                    index === focusedIndex
+                      ? 'bg-gray-600'
+                      : 'hover:bg-gray-700'
+                  }`}
                 >
                   <input
                     type="checkbox"
