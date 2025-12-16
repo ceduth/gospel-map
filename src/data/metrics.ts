@@ -1,33 +1,184 @@
 import { DataSource, RawMetric, AggregatedLocation, LocationData } from '@/types';
+import { parseISO, parse } from 'date-fns';
 
-export const dataSources: DataSource[] = ['app', 'web', 'me2', 'youtube', 'nextsteps'];
+const debug = (...args: any[]) => process.env.NEXT_PUBLIC_DEBUG_METRICS && console.log('[Metrics]', ...args);
+
+export const dataSources: DataSource[] = ['app', 'web'];
 
 export const sourceColors: Record<DataSource, string> = {
-  app: '#8b5cf6',      // purple (was blue)
-  web: '#f59e0b',      // amber (was emerald)
-  me2: '#f59e0b',      // amber (keep for data compatibility)
-  youtube: '#ef4444',  // red (keep for data compatibility)
-  nextsteps: '#ec4899', // pink (was purple)
+  app: '#8b5cf6',
+  web: '#f59e0b',
 };
 
-export async function loadMetrics(): Promise<RawMetric[]> {
-  const res = await fetch('/data.csv');
-  const text = await res.text();
-  const lines = text.trim().split('\n');
+function parseTimestamp(timestamp: string): Date {
+  try {
+    const date = parseISO(timestamp);
+    if (!isNaN(date.getTime())) {
+      return date;
+    }
+  } catch { }
 
-  return lines.slice(1).map(line => {
-    const values = line.split(',');
-    return {
-      date: values[0],
-      hour: parseInt(values[1], 10),
-      source: values[2] as DataSource,
-      lat: parseFloat(values[3]),
-      lng: parseFloat(values[4]),
-      country: values[5],
-      views: parseInt(values[6], 10),
-      exposures: parseInt(values[7], 10),
-    };
-  });
+  try {
+    const date = parse(timestamp, 'yyyy-MM-dd HH:mm:ss.SSSSSS z', new Date());
+    if (!isNaN(date.getTime())) {
+      return date;
+    }
+  } catch { }
+
+  // Fallback
+  const normalized = timestamp.replace(' ', 'T').replace(' UTC', 'Z');
+  return new Date(normalized);
+}
+
+function isValidCoordinate(lat: number, lng: number): boolean {
+  if (isNaN(lat) || isNaN(lng)) return false;
+  if (lat === 0 && lng === 0) return false;
+  if (lat < -90 || lat > 90) return false;
+  if (lng < -180 || lng > 180) return false;
+  return true;
+}
+
+function parseCSVLine(line: string): string[] {
+  const values: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (char === ',' && !inQuotes) {
+      values.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  values.push(current.trim());
+  
+  return values;
+}
+
+export async function loadMetrics(): Promise<RawMetric[]> {
+  // Demo mode - skip API, use local CSV
+  if (process.env.NEXT_PUBLIC_DEMO_MODE === 'true') {
+    debug('Demo mode enabled, using local CSV');
+    const res = await fetch('/data.csv');
+    const text = await res.text();
+    return parseMetricsCSV(text, false);
+  }
+
+  try {
+    // Try BigQuery API first
+    const res = await fetch('/api/metrics');
+
+    if (!res.ok) {
+      throw new Error(`API fetch failed: ${res.status}`);
+    }
+
+    const text = await res.text();
+    debug('API response first 500 chars:', text.substring(0, 500));
+    
+    const metrics = parseMetricsCSV(text, true);
+    
+    // Debug: count by source
+    const sourceCounts = metrics.reduce((acc, m) => {
+      acc[m.source] = (acc[m.source] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    debug('Metrics by source:', sourceCounts);
+    debug('Total metrics loaded:', metrics.length);
+    
+    return metrics;
+
+  } catch (error) {
+    console.error('Failed to load from API:', error);
+
+    // Check if fallback is disabled
+    if (process.env.NEXT_PUBLIC_DISABLE_CSV_FALLBACK === 'true') {
+      debug('CSV fallback disabled, returning empty');
+      return [];
+    }
+
+    debug('Falling back to local CSV...');
+    // Fallback to local CSV for development
+    const res = await fetch('/data.csv');
+    const text = await res.text();
+    return parseMetricsCSV(text, false);
+  }
+}
+
+function parseMetricsCSV(text: string, hasViewCount: boolean): RawMetric[] {
+  const lines = text.trim().split('\n');
+  debug(`Parsing CSV: ${lines.length} lines, hasViewCount=${hasViewCount}`);
+  
+  const platformValues = new Set<string>();
+  
+  const metrics = lines.slice(1)
+    .map(line => {
+      const values = parseCSVLine(line);
+
+      if (hasViewCount) {
+        // API format: event_timestamp,event_view_count,latitude,longitude,Language_JFProd,media_component_title,platform
+        const timestamp = parseTimestamp(values[0] || '');
+        const eventViewCount = parseInt(values[1], 10) || 1;
+        const lat = parseFloat(values[2]) || 0;
+        const lng = parseFloat(values[3]) || 0;
+        const language = (values[4] || '').trim();
+        const title = (values[5] || '').trim();
+        const platform = (values[6] || 'web').trim() as DataSource;
+        
+        platformValues.add(platform);
+
+        return {
+          date: timestamp.toISOString().split('T')[0],
+          hour: timestamp.getUTCHours(),
+          source: platform,
+          lat: lat,
+          lng: lng,
+          country: 'Unknown',
+          views: eventViewCount,
+          language,
+          title,
+        };
+      } else {
+        // Fallback CSV format: event_timestamp,latitude,longitude,Language_JFProd,media_component_title,platform
+        const timestamp = parseTimestamp(values[0] || '');
+        const lat = parseFloat(values[1]) || 0;
+        const lng = parseFloat(values[2]) || 0;
+        const language = (values[3] || '').trim();
+        const title = (values[4] || '').trim();
+        const platform = (values[5] || 'web').trim() as DataSource;
+        
+        platformValues.add(platform);
+
+        return {
+          date: timestamp.toISOString().split('T')[0],
+          hour: timestamp.getUTCHours(),
+          source: platform,
+          lat: lat,
+          lng: lng,
+          country: 'Unknown',
+          views: 1,
+          language,
+          title,
+        };
+      }
+    })
+    .filter(metric => isValidCoordinate(metric.lat, metric.lng));
+  
+  debug('Platform values found:', Array.from(platformValues));
+  return metrics;
+}
+
+export function getUniqueLanguages(metrics: RawMetric[]): string[] {
+  const set = new Set(metrics.map(m => m.language).filter(Boolean));
+  return Array.from(set).sort();
+}
+
+export function getUniqueTitles(metrics: RawMetric[]): string[] {
+  const set = new Set(metrics.map(m => m.title).filter(Boolean));
+  return Array.from(set).sort();
 }
 
 export function aggregateByLocationHour(
@@ -35,19 +186,26 @@ export function aggregateByLocationHour(
   metrics: RawMetric[],
   sourceFilter?: DataSource[],
   showViews = true,
-  showExposures = true
+  languageFilter?: string[],
+  titleFilter?: string[]
 ): AggregatedLocation[] {
   const hourMetrics = metrics.filter(m => {
     if (m.hour !== hour) return false;
     if (sourceFilter && !sourceFilter.includes(m.source)) return false;
+    if (languageFilter && languageFilter.length > 0 && !languageFilter.includes(m.language)) return false;
+    if (titleFilter && titleFilter.length > 0 && !titleFilter.includes(m.title)) return false;
     return true;
   });
+
+  // Debug: log once per unique hour
+  if (hour === 0) {
+    debug(`aggregateByLocationHour: hour=${hour}, sourceFilter=${sourceFilter}, matching=${hourMetrics.length}`);
+  }
 
   const locationMap = new Map<string, {
     location: LocationData;
     views: number;
-    exposures: number;
-    bySource: Record<DataSource, { views: number; exposures: number }>;
+    bySource: Record<DataSource, { views: number }>;
   }>();
 
   for (const metric of hourMetrics) {
@@ -57,52 +215,61 @@ export function aggregateByLocationHour(
       locationMap.set(id, {
         location: { id, lat: metric.lat, lng: metric.lng, country: metric.country },
         views: 0,
-        exposures: 0,
         bySource: {
-          app: { views: 0, exposures: 0 },
-          web: { views: 0, exposures: 0 },
-          me2: { views: 0, exposures: 0 },
-          youtube: { views: 0, exposures: 0 },
-          nextsteps: { views: 0, exposures: 0 },
+          app: { views: 0 },
+          web: { views: 0 },
         },
       });
     }
 
     const data = locationMap.get(id)!;
     data.views += metric.views;
-    if (metric.source === 'nextsteps') { data.exposures += metric.exposures; }  // Journey Views only count NextSteps source
     data.bySource[metric.source].views += metric.views;
-    data.bySource[metric.source].exposures += metric.exposures;
   }
 
   return Array.from(locationMap.values()).map(d => ({
     location: d.location,
     hour,
     views: showViews ? d.views : 0,
-    exposures: showExposures ? d.exposures : 0,
     bySource: d.bySource,
   }));
 }
 
 export function getHourlyTotals(
   metrics: RawMetric[],
-  sourceFilter?: DataSource[]
-): { hour: number; views: number; exposures: number }[] {
-  const totals: { hour: number; views: number; exposures: number }[] = [];
+  sourceFilter?: DataSource[],
+  languageFilter?: string[],
+  titleFilter?: string[]
+): { hour: number; views: number }[] {
+  
+  const totals: { hour: number; views: number }[] = [];
+  if (!metrics || metrics.length === 0) {
+    debug('getHourlyTotals: no metrics, returning empty');
+    // Return 24 empty hours to prevent errors
+    for (let hour = 0; hour < 24; hour++) {
+      totals.push({ hour, views: 0 });
+    }
+    return totals;
+  }
 
   for (let hour = 0; hour < 24; hour++) {
     const hourMetrics = metrics.filter(m => {
       if (m.hour !== hour) return false;
       if (sourceFilter && !sourceFilter.includes(m.source)) return false;
+      if (languageFilter && languageFilter.length > 0 && !languageFilter.includes(m.language)) return false;
+      if (titleFilter && titleFilter.length > 0 && !titleFilter.includes(m.title)) return false;
       return true;
     });
 
     totals.push({
       hour,
       views: hourMetrics.reduce((sum, m) => sum + m.views, 0),
-      exposures: hourMetrics.reduce((sum, m) => sum + m.exposures, 0),
     });
   }
+
+  // Debug: log total views
+  const totalViews = totals.reduce((sum, t) => sum + t.views, 0);
+  debug(`getHourlyTotals: sourceFilter=${sourceFilter}, totalViews=${totalViews}`);
 
   return totals;
 }

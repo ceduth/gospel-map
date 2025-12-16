@@ -1,6 +1,7 @@
 'use client';
 
-import { Smartphone, Globe, Eye, Route } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Smartphone, Globe, ChevronDown, Search, Play, Sparkles } from 'lucide-react';
 import { DataSource } from '@/types';
 import { sourceColors } from '@/data/metrics';
 
@@ -8,78 +9,340 @@ interface FilterControlsProps {
   activeSources: DataSource[];
   onSourceToggle: (source: DataSource) => void;
   showViews: boolean;
-  showExposures: boolean;
   onToggleViews: () => void;
-  onToggleExposures: () => void;
+  languages: string[];
+  titles: string[];
+  selectedLanguages: string[];
+  selectedTitles: string[];
+  onLanguageChange: (languages: string[]) => void;
+  onTitleChange: (titles: string[]) => void;
 }
 
 const sourceLabels: Record<DataSource, string> = {
   app: 'App',
   web: 'Web',
-  me2: 'ME2',
-  youtube: 'YouTube',
-  nextsteps: 'NextSteps',
 };
-
-const NextStepsIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 67 67" xmlns="http://www.w3.org/2000/svg">
-    <g transform="translate(10, 10)">
-      <path d="M12.5955 6.0247C12.5955 4.36103 13.9442 3.01236 15.6079 3.01236H43.0537C44.7173 3.01236 46.066 4.36103 46.066 6.0247V29.438C46.066 31.5469 43.9549 33.003 41.9836 32.2539L14.5378 21.8245C13.3685 21.3802 12.5955 20.2595 12.5955 19.0086V6.0247Z" fill="currentColor"/>
-      <path d="M33.6819 37.6543C33.6819 39.318 32.3333 40.6667 30.6696 40.6667H3.22379C1.56012 40.6667 0.211448 39.318 0.211448 37.6543V14.241C0.211448 12.1322 2.32252 10.676 4.29383 11.4251L31.7396 21.8545C32.9089 22.2988 33.6819 23.4195 33.6819 24.6704V37.6543Z" fill="currentColor"/>
-    </g>
-  </svg>
-);
 
 const sourceIcons: Record<DataSource, React.ReactNode> = {
   app: <Smartphone size={16} />,
   web: <Globe size={16} />,
-  me2: null,
-  youtube: null,
-  nextsteps: <NextStepsIcon />,
 };
+
+interface MetricOption {
+  id: string;
+  label: string;
+  icon: React.ReactNode;
+  available: boolean;
+}
+
+const metricOptions: MetricOption[] = [
+  { id: 'views', label: 'Media Plays', icon: <Play size={16} />, available: true },
+  { id: 'exposures', label: 'Exposures', icon: <Sparkles size={16} />, available: false },
+];
+
+function MultiSelect({
+  label,
+  options,
+  selected,
+  onChange,
+}: {
+  label: string;
+  options: string[];
+  selected: string[];
+  onChange: (val: string[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const [focusedIndex, setFocusedIndex] = useState(-1);
+  const ref = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+        setSearch('');
+        setFocusedIndex(-1);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (open && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [open]);
+
+  const toggle = (opt: string) => {
+    onChange(selected.includes(opt) ? selected.filter(s => s !== opt) : [...selected, opt]);
+  };
+
+  const filteredOptions = options.filter(opt =>
+    opt.toLowerCase().includes(search.toLowerCase())
+  );
+
+  // Sort: selected items first, then alphabetical
+  const sortedOptions = [...filteredOptions].sort((a, b) => {
+    const aSelected = selected.includes(a);
+    const bSelected = selected.includes(b);
+    if (aSelected && !bSelected) return -1;
+    if (!aSelected && bSelected) return 1;
+    return a.localeCompare(b);
+  });
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!open) return;
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setFocusedIndex(prev =>
+          prev < sortedOptions.length - 1 ? prev + 1 : prev
+        );
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setFocusedIndex(prev => (prev > 0 ? prev - 1 : prev));
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (focusedIndex >= 0 && focusedIndex < sortedOptions.length) {
+          toggle(sortedOptions[focusedIndex]);
+        }
+        break;
+      case 'Escape':
+        e.preventDefault();
+        setOpen(false);
+        setSearch('');
+        setFocusedIndex(-1);
+        break;
+    }
+  };
+
+  // Scroll focused item into view
+  useEffect(() => {
+    if (focusedIndex >= 0 && listRef.current) {
+      const items = listRef.current.querySelectorAll('[data-option]');
+      items[focusedIndex]?.scrollIntoView({ block: 'nearest' });
+    }
+  }, [focusedIndex]);
+
+  // Reset focus when search changes
+  useEffect(() => {
+    setFocusedIndex(-1);
+  }, [search]);
+
+  const selectAllFiltered = () => {
+    const newSelected = [...new Set([...selected, ...filteredOptions])];
+    onChange(newSelected);
+  };
+
+  const unselectedFilteredCount = filteredOptions.filter(opt => !selected.includes(opt)).length;
+
+  return (
+    <div ref={ref} className="relative" onKeyDown={handleKeyDown}>
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-left flex items-center justify-between hover:bg-gray-700 transition-colors"
+      >
+        <span className="text-gray-300 truncate">
+          {selected.length === 0 ? `All ${label}` : `${selected.length} selected`}
+        </span>
+        <ChevronDown size={16} className={`text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute z-50 mt-1 w-64 max-h-72 bg-gray-800 border border-gray-700 rounded-lg shadow-xl overflow-hidden">
+          <div className="p-2 border-b border-gray-700">
+            <div className="relative">
+              <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search..."
+                className="w-full pl-8 pr-12 py-1.5 bg-gray-700 border border-gray-600 rounded text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-500"
+              />
+              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-500">
+                {filteredOptions.length}/{options.length}
+              </span>
+            </div>
+          </div>
+          <div className="flex border-b border-gray-700">
+            <button
+              onClick={() => {
+                onChange([]);
+                setSearch('');
+              }}
+              className="flex-1 px-3 py-1.5 text-left text-xs text-gray-400 hover:bg-gray-700"
+            >
+              Clear
+            </button>
+            {search && unselectedFilteredCount > 0 && (
+              <button
+                onClick={selectAllFiltered}
+                className="flex-1 px-3 py-1.5 text-right text-xs text-blue-400 hover:bg-gray-700"
+              >
+                Select all {filteredOptions.length}
+              </button>
+            )}
+          </div>
+          <div ref={listRef} className="max-h-48 overflow-auto">
+            {sortedOptions.length === 0 ? (
+              <div className="px-3 py-2 text-sm text-gray-500">No matches</div>
+            ) : (
+              sortedOptions.map((opt, index) => (
+                <label
+                  key={opt}
+                  data-option
+                  className={`flex items-center gap-2 px-3 py-2 cursor-pointer ${index === focusedIndex
+                      ? 'bg-gray-600'
+                      : 'hover:bg-gray-700'
+                    }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selected.includes(opt)}
+                    onChange={() => toggle(opt)}
+                    className="rounded border-gray-600 bg-gray-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-800"
+                  />
+                  <span className="text-sm text-gray-300 truncate">{opt}</span>
+                </label>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MetricsSelect({
+  selected,
+  onChange,
+}: {
+  selected: string[];
+  onChange: (val: string[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const toggle = (id: string) => {
+    onChange(selected.includes(id) ? selected.filter(s => s !== id) : [...selected, id]);
+  };
+
+  const selectedLabels = metricOptions
+    .filter(m => selected.includes(m.id))
+    .map(m => m.label);
+
+  const displayText = selectedLabels.length === 0
+    ? 'None'
+    : selectedLabels.length === 1
+      ? selectedLabels[0]
+      : `${selectedLabels.length} metrics`;
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-sm text-left flex items-center justify-between hover:bg-gray-700 transition-colors"
+      >
+        <span className="text-gray-200 font-medium">{displayText}</span>
+        <ChevronDown size={16} className={`text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute right-0 z-50 mt-1 w-64 bg-gray-800 border border-gray-700 rounded-lg shadow-xl overflow-hidden">          {metricOptions.map(metric => (
+          <label
+            key={metric.id}
+            className={`flex items-center gap-3 px-3 py-2.5 ${metric.available
+                ? 'cursor-pointer hover:bg-gray-700'
+                : 'cursor-not-allowed opacity-50'
+              }`}
+          >
+            <input
+              type="checkbox"
+              checked={selected.includes(metric.id)}
+              onChange={() => metric.available && toggle(metric.id)}
+              disabled={!metric.available}
+              className="rounded border-gray-600 bg-gray-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-800 disabled:opacity-50"
+            />
+            <span className="text-gray-300">{metric.icon}</span>
+            <span className="text-sm text-gray-200 flex-1">{metric.label}</span>
+            {!metric.available && (
+              <span className="text-xs bg-gray-700 text-gray-400 px-2 py-0.5 rounded">
+                Coming soon
+              </span>
+            )}
+          </label>
+        ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function FilterControls({
   activeSources,
   onSourceToggle,
   showViews,
-  showExposures,
   onToggleViews,
-  onToggleExposures,
+  languages,
+  titles,
+  selectedLanguages,
+  selectedTitles,
+  onLanguageChange,
+  onTitleChange,
 }: FilterControlsProps) {
 
-  const sources: DataSource[] = ['app', 'web', 'nextsteps'];
+  const sources: DataSource[] = ['app', 'web'];
+
+  // Convert showViews boolean to array format for MetricsSelect
+  const selectedMetrics = showViews ? ['views'] : [];
+  const handleMetricsChange = (metrics: string[]) => {
+    const shouldShowViews = metrics.includes('views');
+    if (shouldShowViews !== showViews) {
+      onToggleViews();
+    }
+  };
 
   return (
     <div className="absolute top-4 right-16 bg-gray-900/90 backdrop-blur rounded-lg px-4 py-3">
       <div className="mb-4 pb-4 border-b border-gray-700">
         <div className="text-xs text-gray-400 mb-3 font-semibold uppercase tracking-wide">Metrics</div>
-        <div className="flex gap-3">
-          <button
-            onClick={onToggleViews}
-            className={`
-              px-4 py-2.5 rounded-full text-sm font-semibold transition-all flex items-center gap-2.5 shadow-lg
-              ${showViews
-                ? 'bg-blue-600 text-white shadow-blue-500/50'
-                : 'bg-gray-800 text-gray-400 hover:bg-gray-700 shadow-none'
-              }
-            `}
-          >
-            <Eye size={20} />
-            <span>Media Views</span>
-          </button>
-          <button
-            onClick={onToggleExposures}
-            className={`
-              px-4 py-2.5 rounded-full text-sm font-semibold transition-all flex items-center gap-2.5 shadow-lg
-              ${showExposures
-                ? 'bg-emerald-600 text-white shadow-emerald-500/50'
-                : 'bg-gray-800 text-gray-400 hover:bg-gray-700 shadow-none'
-              }
-            `}
-          >
-            <Route size={20} />
-            <span>Journey Views</span>
-          </button>
+        <MetricsSelect
+          selected={selectedMetrics}
+          onChange={handleMetricsChange}
+        />
+      </div>
+
+      <div className="mb-4 pb-4 border-b border-gray-700">
+        <div className="text-xs text-gray-400 mb-3 font-semibold uppercase tracking-wide">Filters</div>
+        <div className="space-y-2">
+          <MultiSelect
+            label="Languages"
+            options={languages}
+            selected={selectedLanguages}
+            onChange={onLanguageChange}
+          />
+          <MultiSelect
+            label="Titles"
+            options={titles}
+            selected={selectedTitles}
+            onChange={onTitleChange}
+          />
         </div>
       </div>
 

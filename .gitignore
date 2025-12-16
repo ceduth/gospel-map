@@ -13,3 +13,5 @@ npm-debug.log*
 .vscode/
 .DS_Store
 .vercel/
+service-account-key.json
+jfp-data-warehouse-a6d5290a031a.json
