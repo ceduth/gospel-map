@@ -124,6 +124,8 @@ function parseMetricsCSV(text: string, hasViewCount: boolean): RawMetric[] {
         const eventViewCount = parseInt(values[1], 10) || 1;
         const lat = parseFloat(values[2]) || 0;
         const lng = parseFloat(values[3]) || 0;
+        const language = (values[4] || '').trim();
+        const title = (values[5] || '').trim();
         const platform = (values[6] || 'web').trim() as DataSource;
         
         platformValues.add(platform);
@@ -136,12 +138,16 @@ function parseMetricsCSV(text: string, hasViewCount: boolean): RawMetric[] {
           lng: lng,
           country: 'Unknown',
           views: eventViewCount,
+          language,
+          title,
         };
       } else {
         // Fallback CSV format: event_timestamp,latitude,longitude,Language_JFProd,media_component_title,platform
         const timestamp = parseTimestamp(values[0] || '');
         const lat = parseFloat(values[1]) || 0;
         const lng = parseFloat(values[2]) || 0;
+        const language = (values[3] || '').trim();
+        const title = (values[4] || '').trim();
         const platform = (values[5] || 'web').trim() as DataSource;
         
         platformValues.add(platform);
@@ -154,6 +160,8 @@ function parseMetricsCSV(text: string, hasViewCount: boolean): RawMetric[] {
           lng: lng,
           country: 'Unknown',
           views: 1,
+          language,
+          title,
         };
       }
     })
@@ -163,15 +171,29 @@ function parseMetricsCSV(text: string, hasViewCount: boolean): RawMetric[] {
   return metrics;
 }
 
+export function getUniqueLanguages(metrics: RawMetric[]): string[] {
+  const set = new Set(metrics.map(m => m.language).filter(Boolean));
+  return Array.from(set).sort();
+}
+
+export function getUniqueTitles(metrics: RawMetric[]): string[] {
+  const set = new Set(metrics.map(m => m.title).filter(Boolean));
+  return Array.from(set).sort();
+}
+
 export function aggregateByLocationHour(
   hour: number,
   metrics: RawMetric[],
   sourceFilter?: DataSource[],
-  showViews = true
+  showViews = true,
+  languageFilter?: string[],
+  titleFilter?: string[]
 ): AggregatedLocation[] {
   const hourMetrics = metrics.filter(m => {
     if (m.hour !== hour) return false;
     if (sourceFilter && !sourceFilter.includes(m.source)) return false;
+    if (languageFilter && languageFilter.length > 0 && !languageFilter.includes(m.language)) return false;
+    if (titleFilter && titleFilter.length > 0 && !titleFilter.includes(m.title)) return false;
     return true;
   });
 
@@ -215,7 +237,9 @@ export function aggregateByLocationHour(
 
 export function getHourlyTotals(
   metrics: RawMetric[],
-  sourceFilter?: DataSource[]
+  sourceFilter?: DataSource[],
+  languageFilter?: string[],
+  titleFilter?: string[]
 ): { hour: number; views: number }[] {
   
   const totals: { hour: number; views: number }[] = [];
@@ -232,6 +256,8 @@ export function getHourlyTotals(
     const hourMetrics = metrics.filter(m => {
       if (m.hour !== hour) return false;
       if (sourceFilter && !sourceFilter.includes(m.source)) return false;
+      if (languageFilter && languageFilter.length > 0 && !languageFilter.includes(m.language)) return false;
+      if (titleFilter && titleFilter.length > 0 && !titleFilter.includes(m.title)) return false;
       return true;
     });
 

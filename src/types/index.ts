@@ -8,6 +8,8 @@ export interface RawMetric {
   lng: number;
   country: string;
   views: number;
+  language: string;
+  title: string;
 }
 
 export interface LocationData {

@@ -1,6 +1,7 @@
 'use client';
 
-import { Smartphone, Globe, Eye } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Smartphone, Globe, Eye, ChevronDown, Search } from 'lucide-react';
 import { DataSource } from '@/types';
 import { sourceColors } from '@/data/metrics';
 
@@ -9,6 +10,12 @@ interface FilterControlsProps {
   onSourceToggle: (source: DataSource) => void;
   showViews: boolean;
   onToggleViews: () => void;
+  languages: string[];
+  titles: string[];
+  selectedLanguages: string[];
+  selectedTitles: string[];
+  onLanguageChange: (languages: string[]) => void;
+  onTitleChange: (titles: string[]) => void;
 }
 
 const sourceLabels: Record<DataSource, string> = {
@@ -21,11 +28,119 @@ const sourceIcons: Record<DataSource, React.ReactNode> = {
   web: <Globe size={16} />,
 };
 
+function MultiSelect({
+  label,
+  options,
+  selected,
+  onChange,
+}: {
+  label: string;
+  options: string[];
+  selected: string[];
+  onChange: (val: string[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const ref = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+        setSearch('');
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (open && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [open]);
+
+  const toggle = (opt: string) => {
+    onChange(selected.includes(opt) ? selected.filter(s => s !== opt) : [...selected, opt]);
+  };
+
+  const filteredOptions = options.filter(opt =>
+    opt.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-left flex items-center justify-between hover:bg-gray-700 transition-colors"
+      >
+        <span className="text-gray-300 truncate">
+          {selected.length === 0 ? `All ${label}` : `${selected.length} selected`}
+        </span>
+        <ChevronDown size={16} className={`text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute z-50 mt-1 w-64 max-h-72 bg-gray-800 border border-gray-700 rounded-lg shadow-xl overflow-hidden">
+          <div className="p-2 border-b border-gray-700">
+            <div className="relative">
+              <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search..."
+                className="w-full pl-8 pr-3 py-1.5 bg-gray-700 border border-gray-600 rounded text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-500"
+              />
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              onChange([]);
+              setSearch('');
+            }}
+            className="w-full px-3 py-2 text-left text-xs text-gray-400 hover:bg-gray-700 border-b border-gray-700"
+          >
+            Clear selection
+          </button>
+          <div className="max-h-48 overflow-auto">
+            {filteredOptions.length === 0 ? (
+              <div className="px-3 py-2 text-sm text-gray-500">No matches</div>
+            ) : (
+              filteredOptions.map(opt => (
+                <label
+                  key={opt}
+                  className="flex items-center gap-2 px-3 py-2 hover:bg-gray-700 cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selected.includes(opt)}
+                    onChange={() => toggle(opt)}
+                    className="rounded border-gray-600 bg-gray-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-800"
+                  />
+                  <span className="text-sm text-gray-300 truncate">{opt}</span>
+                </label>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function FilterControls({
   activeSources,
   onSourceToggle,
   showViews,
   onToggleViews,
+  languages,
+  titles,
+  selectedLanguages,
+  selectedTitles,
+  onLanguageChange,
+  onTitleChange,
 }: FilterControlsProps) {
 
   const sources: DataSource[] = ['app', 'web'];
@@ -48,6 +163,24 @@ export default function FilterControls({
             <Eye size={20} />
             <span>Media Views</span>
           </button>
+        </div>
+      </div>
+
+      <div className="mb-4 pb-4 border-b border-gray-700">
+        <div className="text-xs text-gray-400 mb-3 font-semibold uppercase tracking-wide">Filters</div>
+        <div className="space-y-2">
+          <MultiSelect
+            label="Languages"
+            options={languages}
+            selected={selectedLanguages}
+            onChange={onLanguageChange}
+          />
+          <MultiSelect
+            label="Titles"
+            options={titles}
+            selected={selectedTitles}
+            onChange={onTitleChange}
+          />
         </div>
       </div>
 

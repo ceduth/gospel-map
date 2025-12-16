@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Map as MapGL, Marker, Popup, NavigationControl } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { DataSource, RawMetric, AggregatedLocation } from '@/types';
-import { loadMetrics, aggregateByLocationHour, dataSources, sourceColors } from '@/data/metrics';
+import { loadMetrics, aggregateByLocationHour, dataSources, sourceColors, getUniqueLanguages, getUniqueTitles } from '@/data/metrics';
 import Timeline from './Timeline';
 import FilterControls from './FilterControls';
 
@@ -18,6 +18,8 @@ export default function GospelMap() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeSources, setActiveSources] = useState<DataSource[]>([...dataSources]);
   const [showViews, setShowViews] = useState(true);
+  const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
+  const [selectedTitles, setSelectedTitles] = useState<string[]>([]);
   const [hoveredLocation, setHoveredLocation] = useState<string | null>(null);
   const [popupInfo, setPopupInfo] = useState<{
     id: string;
@@ -25,6 +27,9 @@ export default function GospelMap() {
     lng: number;
   } | null>(null);
   const [mapError, setMapError] = useState<string | null>(null);
+
+  const languages = useMemo(() => getUniqueLanguages(metrics), [metrics]);
+  const titles = useMemo(() => getUniqueTitles(metrics), [metrics]);
 
   useEffect(() => {
     setIsLoading(true);
@@ -39,7 +44,7 @@ export default function GospelMap() {
     const newCumulative = new Map<string, AggregatedLocation>();
 
     for (let h = 0; h <= currentHour; h++) {
-      const hourData = aggregateByLocationHour(h, metrics, activeSources, showViews);
+      const hourData = aggregateByLocationHour(h, metrics, activeSources, showViews, selectedLanguages, selectedTitles);
 
       for (const data of hourData) {
         const id = data.location.id;
@@ -66,7 +71,7 @@ export default function GospelMap() {
     }
 
     setCumulativeData(newCumulative);
-  }, [currentHour, metrics, activeSources, showViews]);
+  }, [currentHour, metrics, activeSources, showViews, selectedLanguages, selectedTitles]);
 
   useEffect(() => {
     if (!isPlaying) return;
@@ -83,12 +88,12 @@ export default function GospelMap() {
   const maxViews = useMemo(() => {
     const allHourTotals: number[] = [];
     for (let h = 0; h < 24; h++) {
-      const hourData = aggregateByLocationHour(h, metrics, activeSources, true);
+      const hourData = aggregateByLocationHour(h, metrics, activeSources, true, selectedLanguages, selectedTitles);
       const hourTotal = hourData.reduce((sum, d) => sum + d.views, 0);
       allHourTotals.push(hourTotal);
     }
     return Math.max(...allHourTotals, 1);
-  }, [metrics, activeSources]);
+  }, [metrics, activeSources, selectedLanguages, selectedTitles]);
 
   const handleSourceToggle = useCallback((source: DataSource) => {
     setActiveSources(current => {
@@ -258,6 +263,12 @@ export default function GospelMap() {
         onSourceToggle={handleSourceToggle}
         showViews={showViews}
         onToggleViews={() => setShowViews(!showViews)}
+        languages={languages}
+        titles={titles}
+        selectedLanguages={selectedLanguages}
+        selectedTitles={selectedTitles}
+        onLanguageChange={setSelectedLanguages}
+        onTitleChange={setSelectedTitles}
       />
 
       <div className="absolute bottom-24 left-4 bg-gray-900/90 backdrop-blur rounded-lg px-4 py-3">
@@ -276,6 +287,8 @@ export default function GospelMap() {
         activeSources={activeSources}
         showViews={showViews}
         metrics={metrics}
+        selectedLanguages={selectedLanguages}
+        selectedTitles={selectedTitles}
       />
     </div>
   );
